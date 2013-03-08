@@ -1,16 +1,28 @@
 var canvas;
 var context;
 var theMaze = null;
+var score = 0;
+var joystick, keysPressed;
 
-$(document).ready(function() {
-	canvas = document.getElementById("maze");//$('#maze');
-	context = canvas.getContext('2d');	
-	context.font = "bold 20px sans-serif";
-	$(document).keydown(handleKeypress);
-});
+
 
 $('#generate').on('click', function() {
 	makeMaze();
+});
+$('#next').on('click', function() {
+	var col = parseInt($('#columns').val())+1;
+	$('#columns').val(col);
+	$('#rows').val(parseInt($('#rows').val())+1);
+	
+	var gridsize = parseInt(320/col);
+	if(gridsize < 12)
+		gridsize = 12;
+		
+	$('#gridsize').val(gridsize);
+	
+	makeMaze();
+
+	$('#next').hide();
 });
 $('#zoom').on('click', function() {
 	$('#gridsize').val(parseInt($('#gridsize').val())+10);
@@ -54,6 +66,12 @@ function makeMaze() {
 	var columns = $('#columns').val();
 	var gridsize = $('#gridsize').val();
 	var mazeStyle = $('input[name=mazeStyle]:checked').val();
+
+	var marginLeft = 160-(columns*gridsize/2);
+	var marginTop = 160-(rows*gridsize/2);
+	$('#maze').css({ 'margin-top': marginTop + 'px' });
+	$('#maze').css({ 'margin-left': marginLeft +'px' });
+
 	/*
 	var startColumn = $('#startX').val();
 	var startRow = $('#startY').val();
@@ -102,7 +120,7 @@ function hintsSolveMaze() {
 }
 
 
-
+/*
 function handleClick(mouseX, mouseY, mouseButton) {
 	var gridX = Math.floor(mouseX/theMaze.gridsize);
 	var gridY = Math.floor(mouseY/theMaze.gridsize);
@@ -127,6 +145,104 @@ function handleClick(mouseX, mouseY, mouseButton) {
 	}
 	return theMaze.grid[gridX][gridY];
 }
+*/
+var running = false;
+function handleKeyDown(event) {
+
+if(running == false && theMaze !=null)
+{
+	running = true;
+
+	var currentPlayerGrid = theMaze.grid[theMaze.playerX][theMaze.playerY];
+	var isMoving = false;
+	var changeX = 0;
+	var changeY = 0;
+
+	switch(event.keyCode) {
+		case 37: {
+			//left key
+			if (currentPlayerGrid.leftWall == false) {
+				changeX = -1;
+				isMoving = true;
+			}
+			break;
+		}
+		case 38: {
+			//up key
+			if (currentPlayerGrid.topWall == false) {
+				changeY = -1;	
+				isMoving = true;
+			}
+			break;
+		}
+		case 39: {
+			//right key
+			if (currentPlayerGrid.rightWall == false) {
+				changeX = 1;
+				isMoving = true;
+			}
+			break;
+		}
+		case 40: {
+			//down key
+			if (currentPlayerGrid.bottomWall == false) {
+				changeY = 1;
+				isMoving = true
+			}
+			break;
+		}
+		default: {
+			//not a key we care about
+			break;
+		}
+	}
+	if (isMoving == true) {
+		var theLandingCell = theMaze.grid[theMaze.playerX + changeX][theMaze.playerY + changeY];
+		if(theLandingCell.havePill == true)
+		{
+			theLandingCell.havePill = false;
+			theMaze.pillCollected++;
+			score++;
+
+			$('score').text(score);
+		}
+		
+
+		// Move the maze
+		if(changeX != 0){
+			var marginLeft = (theMaze.gridsize * changeX * -1) + parseInt($('#maze').css("marginLeft").replace('px', ''));
+			$('#maze').animate({ 'margin-left': marginLeft + 'px' }, 100);
+		}
+		if(changeY != 0){
+			var marginTop = (theMaze.gridsize * changeY * -1) + parseInt($('#maze').css("marginTop").replace('px', ''));
+			$('#maze').animate({ 'margin-top': marginTop + 'px' }, 100);
+		}
+
+
+		theMaze.redrawCell(theMaze.grid[theMaze.playerX][theMaze.playerY]);
+		theMaze.playerX += changeX;
+		theMaze.playerY += changeY;
+		theMaze.drawPlayer();
+
+		// The End
+		if(theLandingCell.isEnd == true)
+		{
+			$('#next').show();
+		}
+	}
+	setTimeout(function(){run()},500);
+}
+
+};
+function run(){
+	running=false;
+}
+
+function handleKeyUp(event) {
+
+};
+
+
 function handleKeypress(event) {
 	var currentPlayerGrid = theMaze.grid[theMaze.playerX][theMaze.playerY];
 	var isMoving = false;
@@ -179,32 +295,31 @@ function handleKeypress(event) {
 		{
 			theLandingCell.havePill = false;
 			theMaze.pillCollected++;
-			console.log("pills: " + theMaze.pillCollected);
+			score++;
+			$('score').text(score);
 		}
 		
+
+		// Move the maze
+		if(changeX != 0){
+			var marginLeft = (theMaze.gridsize * changeX * -1) + parseInt($('#maze').css("marginLeft").replace('px', ''));
+			$('#maze').animate({ 'margin-left': marginLeft + 'px' }, 100);
+		}
+		if(changeY != 0){
+			var marginTop = (theMaze.gridsize * changeY * -1) + parseInt($('#maze').css("marginTop").replace('px', ''));
+			$('#maze').animate({ 'margin-top': marginTop + 'px' }, 100);
+		}
+
+
 		theMaze.redrawCell(theMaze.grid[theMaze.playerX][theMaze.playerY]);
 		theMaze.playerX += changeX;
 		theMaze.playerY += changeY;
 		theMaze.drawPlayer();
-		
+
 		// The End
 		if(theLandingCell.isEnd == true)
 		{
-			if(confirm("Next?"))
-			{
-				
-				var col = parseInt($('#columns').val())+1;
-				$('#columns').val(col);
-				$('#rows').val(parseInt($('#rows').val())+1);
-				
-				var gridsize = parseInt(400/col);
-				if(gridsize < 12)
-					gridsize = 12;
-					
-				$('#gridsize').val(gridsize);
-				
-				makeMaze();
-			}
+			$('#next').show();
 		}
 	}
 }
@@ -476,9 +591,7 @@ maze.prototype.generate = function() {
 			chooseCell();
 			addToMaze();	
 			currentCell = nextCell;
-			//console.log(currentCell);
 			theMaze.generatedCellCount += 1;
-			//doGeneration();
 		}
 	}
 }
@@ -497,7 +610,6 @@ maze.prototype.draw = function() {
 			var pastX = parseInt(drawX) + parseInt(this.gridsize);
 			var pastY = parseInt(drawY) + parseInt(this.gridsize);
 			var theCell = this.grid[j][k];
-			//this.drawColors(theCell);
 			
 			if (theCell.partOfSolution == true) {
 				context.fillStyle = this.solutionColor;
@@ -510,9 +622,6 @@ maze.prototype.draw = function() {
 			}
 			if (theCell.isEnd == true) {
 				context.fillStyle = "#FF0000";		
-			}
-			if (theCell.isGenStart == true) {
-				//context.fillStyle = "#0000FF";		
 			}
 			
 
@@ -544,9 +653,9 @@ maze.prototype.draw = function() {
 			
 			if(theCell.havePill == true)
 			{
-				context.fillStyle = "#CCCCCC";
+				context.fillStyle = "#666666";
 				context.beginPath();
-				context.arc(drawX + (this.gridsize/2), drawY+ (this.gridsize/2), (this.gridsize/8), 0, Math.PI*2, true);
+				context.arc(drawX + (this.gridsize/2), drawY+ (this.gridsize/2), (this.gridsize/10), 0, Math.PI*2, true);
 				context.closePath();
 				context.fill();
 			}
@@ -822,3 +931,34 @@ function cell(column, row, partOfMaze, isStart, isEnd, isGenStart) {
 	this.isPlayer = false;
 	this.havePill = true;
 }
+
+
+
+
+
+
+
+$(document).ready(function() {
+	canvas = document.getElementById("maze");//$('#maze');
+	context = canvas.getContext('2d');	
+	context.font = "bold 20px sans-serif";
+	$(document).keydown(handleKeypress);
+
+
+	if (SQUARIFIC.framework && SQUARIFIC.framework.TouchControl) {
+		joystick = new SQUARIFIC.framework.TouchControl(document.getElementById("joystick"), {
+			pretendArrowKeys: true,
+			mindistance: 50,
+			maxdistance: 50,
+			middleLeft: 15,
+			middleTop: 15
+		});
+		//joystick.on("joystickMove", handleTouch);
+		joystick.on("pretendKeydown", handleKeyDown);
+		joystick.on("pretendKeyup", handleKeyUp);
+	} else {
+		console.log("Framework or TouchControl not available");
+	}
+
+	makeMaze();
+});
